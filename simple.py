@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pystan
 from mrpPollLibrary import getMRPpoll
-from mrpModel import mrpNestedModel
+from mrpModel import mrpNestedModel2
 
 intOutcome = "ideo5_2016"
 question   = "affirmact_gen_2016"
@@ -27,9 +27,9 @@ poll.uniq_survey_df.to_csv("affirmWIdeology.csv",index=False)
 #    uniq_survey_df["Success"]     = uniq_survey_df['sum']
 #    polls.append(uniq_survey_df)
 #
-#stateModel = mrpNestedModel(intPoll,polls,1)
-#
-#pystan.misc.stan_rdump(stateModel.data, "data.R")
-#sm = pystan.StanModel(file='MRP.stan')
-#fit = sm.sampling(data=stateModel.data, iter=1000, chains=4)
-#print(fit)
+stateModel = mrpNestedModel2(intPoll,poll,1,intOutcome)
+
+pystan.misc.stan_rdump(stateModel.data, "data.R")
+sm = pystan.StanModel(file='MRP.stan')
+fit = sm.sampling(data=stateModel.data, iter=1000, chains=4)
+print(fit)

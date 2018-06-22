@@ -67,30 +67,33 @@ def interactionFromDict(interactions,eDict):
 
 def getIndexes(udf,mainEffectsLabels,intOrder):
     effects = {}
+ 
+    for eff in mainEffectsLabels:
+        effects[eff] = categoricalEffect(eff,udf[eff].values,len(np.unique(udf[eff].values)),1)
 
-    if "GenderCat" in mainEffectsLabels:
-        effects["GenderCat"] = categoricalEffect("GenderCat",udf.GenderCat.values,2,1)
+    #if "GenderCat" in mainEffectsLabels:
+    #    effects["GenderCat"] = categoricalEffect("GenderCat",udf.GenderCat.values,2,1)
 
-    if "RaceCat" in mainEffectsLabels:
-        effects["RaceCat"]   = categoricalEffect("RaceCat"  ,udf.RaceCat.values  ,len(np.unique(udf.RaceCat.values)),1)
+    #if "RaceCat" in mainEffectsLabels:
+    #    effects["RaceCat"]   = categoricalEffect("RaceCat"  ,udf.RaceCat.values  ,len(np.unique(udf.RaceCat.values)),1)
 
-    if "EduCat" in mainEffectsLabels:
-        effects["EduCat"]    = categoricalEffect("EduCat"   ,udf.EduCat.values   ,len(np.unique(udf.EduCat.values)) ,1)
+    #if "EduCat" in mainEffectsLabels:
+    #    effects["EduCat"]    = categoricalEffect("EduCat"   ,udf.EduCat.values   ,len(np.unique(udf.EduCat.values)) ,1)
 
-    if "AgeCat" in mainEffectsLabels:
-        effects["AgeCat"]    = categoricalEffect("AgeCat"   ,udf.AgeCat.values   ,len(np.unique(udf.AgeCat.values)) ,1)
+    #if "AgeCat" in mainEffectsLabels:
+    #    effects["AgeCat"]    = categoricalEffect("AgeCat"   ,udf.AgeCat.values   ,len(np.unique(udf.AgeCat.values)) ,1)
 
-    if "MarCat" in mainEffectsLabels:
-        effects["MarCat"]    = categoricalEffect("MarCat", udf.MarCat.values ,len(np.unique(udf.MarCat.values)) ,1)
+    #if "MarCat" in mainEffectsLabels:
+    #    effects["MarCat"]    = categoricalEffect("MarCat", udf.MarCat.values ,len(np.unique(udf.MarCat.values)) ,1)
 
-    if "IncCat" in mainEffectsLabels:
-        effects["IncCat"]    = categoricalEffect("IncCat", udf.IncCat.values ,len(np.unique(udf.IncCat.values)) ,1)
+    #if "IncCat" in mainEffectsLabels:
+    #    effects["IncCat"]    = categoricalEffect("IncCat", udf.IncCat.values ,len(np.unique(udf.IncCat.values)) ,1)
 
-    if "USRCat" in mainEffectsLabels:
-        effects["USRCat"]    = categoricalEffect("USRCat", udf.USRCat.values ,3,1)
+    #if "USRCat" in mainEffectsLabels:
+    #    effects["USRCat"]    = categoricalEffect("USRCat", udf.USRCat.values ,3,1)
 
-    if "state_initnum" in mainEffectsLabels:
-        effects["state_initnum"]     = categoricalEffect("state_initnum",udf.state_initnum.values,51,1)
+    #if "state_initnum" in mainEffectsLabels:
+    #    effects["state_initnum"]     = categoricalEffect("state_initnum",udf.state_initnum.values,51,1)
 
     interactionsLoL = [[x for x in combinations(mainEffectsLabels,io+2)] for io in range(intOrder-1)]
     interactions = [item for sublist in interactionsLoL for item in sublist]
@@ -134,6 +137,244 @@ def getLinearPropensity(indexes_,effects,mainEffectsLabels,higherOrderEffectsLab
         eta  += coeff[indexes_[:,i]]
     return eta
 
+class mrpNestedModel2:
+    def __init__(self,poll,poll2,intOrder,iName):
+        mainEffectsLabels  = poll.mainEffectsLabels
+        uniq_survey_df     = poll.uniq_survey_df
+        df                 = poll.df
+        mainEffectsLabels2 = poll2.mainEffectsLabels
+        uniq_survey_df2    = poll2.uniq_survey_df
+        df2                = poll2.df
+
+        data = {}
+        dataBlock = ["data {"]
+
+        ps_df = pd.read_csv("ps_wUSR.csv")
+        #!!!!!!this post stratification set uses 0 based indexing, convert to 1 based first!!!!
+        ps_df = (ps_df.groupby(mainEffectsLabels).n.apply(sum)).reset_index()
+        ps_df[mainEffectsLabels] = ps_df[mainEffectsLabels]+1
+        indexes,effects,higherOrderEffectsLabels = getIndexes(ps_df,mainEffectsLabels,intOrder)
+        print(ps_df)
+
+        allEff = mainEffectsLabels+higherOrderEffectsLabels
+        data["nEffects_z"] = len(allEff)
+        dataBlock.append("  int<lower = 1> nEffects_z;")
+
+        data["nCellPopulation"] = len(ps_df)
+        dataBlock.append("  int<lower = 1> nCellPopulation;")
+        data["indexes_Pop"] = indexes
+        dataBlock.append("  int indexes_Pop[nCellPopulation,nEffects_z];")
+        data["N_Pop"] = ps_df.n.values
+        dataBlock.append("  int N_Pop[nCellPopulation];")
+
+        N       = uniq_survey_df['n'].values
+        outcome = uniq_survey_df[poll.outcome].values
+
+        data["nCellSample_z"] = len(uniq_survey_df)
+        dataBlock.append("  int<lower = 1> nCellSample_z;")
+        
+        data["nResponse_z"] = len(poll.outcome)
+        dataBlock.append("  int<lower = 2> nResponse_z;")
+
+        data["response_z"] = outcome
+        dataBlock.append("  int response_z[nCellSample_z,nResponse_z];")
+
+        print("Outcome: ",np.sum(outcome,axis=0))
+        print("N      : ",np.sum(N))
+        
+        indexes,effects,higherOrderEffectsLabels = getIndexes(uniq_survey_df,mainEffectsLabels,intOrder)
+ 
+
+        data["indexes_z"] = indexes
+        dataBlock.append("  int indexes_z[nCellSample_z,nEffects_z];")
+        
+
+
+        self.outcome  = outcome
+        self.poll     = poll
+        self.effects  = effects
+        self.intOrder = intOrder
+        self.mainEffectsLabels = mainEffectsLabels
+        self.higherOrderEffectsLabels = higherOrderEffectsLabels
+
+        N       = uniq_survey_df2['n'].values
+        outcome = uniq_survey_df2["Success"].values
+
+        data["nCellSample"] = len(uniq_survey_df2)
+        dataBlock.append("  int<lower = 1> nCellSample;")
+        
+        data["N"] = N
+        dataBlock.append("  int N[nCellSample];")
+
+        data["response"] = outcome
+        dataBlock.append("  int response[nCellSample];")
+
+        print("Outcome: ",np.sum(outcome,axis=0))
+        print("N      : ",np.sum(N))
+        
+        indexes,effects,higherOrderEffectsLabels = getIndexes(uniq_survey_df2,mainEffectsLabels2,intOrder)
+        allEff2 = mainEffectsLabels2+higherOrderEffectsLabels
+
+        for eff in allEff2:
+            print("n"+effects[eff].label)
+            data["n"+effects[eff].label] = effects[eff].ncat
+            dataBlock.append("  int<lower = 1> "+"n"+effects[eff].label+";")
+
+        data["nEffects"] = len(allEff2)
+        dataBlock.append("  int<lower = 1> nEffects;")
+
+        data["indexes"] = indexes
+        dataBlock.append("  int indexes[nCellSample,nEffects];")
+            
+        dataBlock.append("}")
+        
+
+        paramBlock = ["parameters{"]
+        tParamBlock = ["transformed parameters{"]
+        #Declare variables
+        #Coefficients for the multinomial model
+        for i in self.poll.outcome[1:]:
+            name = "intercept_z_"+str(i)
+            paramBlock.append("  real "+name+";")
+            for eff in allEff:
+                name = effects[eff].label+"_z_"+str(i)
+                n = "n"+effects[eff].label
+                paramBlock.append("  vector"+"["+n+"]"+"delta_"+name+";")
+                paramBlock.append("  real <lower=0> "+"stdv_"+name+";")
+                tParamBlock.append("  vector"+"["+n+"]"+"a_"+name+";")
+        #Coefficients for the binomial model
+        name = "intercept"
+        paramBlock.append("  real "+name+";")
+        name = "eta"
+        tParamBlock.append("  vector[nCellSample]"+name+";")
+        for eff in allEff2:
+            name = effects[eff].label
+            n = "n"+effects[eff].label
+            paramBlock.append("  vector"+"["+n+"]"+"delta_"+name+";")
+            paramBlock.append("  real <lower=0> "+"stdv_"+name+";")
+            tParamBlock.append("  vector"+"["+n+"]"+"a_"+name+";")
+
+        tParamBlock.append("  matrix[nCellSample_z,nResponse_z] eta_z;")
+        tParamBlock.append("  vector[nCellSample_z] zeros;")
+        tParamBlock.append("  zeros = rep_vector(0,nCellSample_z);")
+
+        #Specify non centered parametrizations
+        #Coefficients for the multinomial model
+        tParamBlock.append("  eta_z[:,1] = zeros;")
+        for i in self.poll.outcome[1:]:
+            etaStr = "  eta_z[:,"+str(i)+"] = "
+            for j,eff in enumerate(allEff):
+                name = effects[eff].label+"_z_"+str(i)
+                tParamBlock.append("  a_"+name+"= stdv_"+name+" * delta_"+name+";")
+                etaStr += "a_"+name+"[indexes_z[:,"+str(j+1)+"]]"
+                if j + 1 < len(allEff):
+                    etaStr += " + "
+            tParamBlock.append(etaStr+";")
+        #Coefficients for the binomial model
+        etaStr = "  eta = "
+        for j,eff in enumerate(allEff2):
+            name = effects[eff].label
+            tParamBlock.append("  a_"+name+"= stdv_"+name+" * delta_"+name+";")
+            etaStr += "a_"+name+"[indexes[:,"+str(j+1)+"]]"
+            if j + 1 < len(allEff2):
+                etaStr += " + "
+        tParamBlock.append(etaStr+";")
+
+        paramBlock.append("}")
+        tParamBlock.append("}")
+
+        modelBlock = ["model {"]
+        #specify the model
+        #Coefficients for the multinomial model
+        for i in self.poll.outcome[1:]:
+            name = "intercept_z_"+str(i)
+            modelBlock.append("  "+name+" ~ normal(0,100);")
+            for eff in allEff:
+                name = effects[eff].label+"_z_"+str(i)
+                modelBlock.append("  delta_"+name+" ~ normal(0,1);")
+                modelBlock.append("  stdv_"+name+" ~ normal(0,1);")
+        #Coefficients for the binomial model
+        name = "intercept"
+        modelBlock.append("  "+name+" ~ normal(0,100);")
+        for eff in allEff:
+            name = effects[eff].label
+            modelBlock.append("  delta_"+name+" ~ normal(0,1);")
+            modelBlock.append("  stdv_"+name+" ~ normal(0,1);")
+
+        modelBlock.append("  for(n in 1:nCellSample_z)")
+        modelBlock.append("    response_z[n,:]   ~ multinomial(softmax(to_vector(eta_z[n,:])));")
+        modelBlock.append("  for(n in 1:nCellSample)")
+        modelBlock.append("    response[n]   ~ binomial(N[n],inv_logit(eta[n]));")
+
+        modelBlock.append("}")
+
+        gqBlock = ["generated quantities {"]
+        gqBlock.append("  simplex[nResponse_z] probs;")
+        gqBlock.append("  vector[nResponse_z] etaTemp_z;")
+        gqBlock.append("  vector[nResponse_z] etaTemp;")
+        gqBlock.append("  int countsTemp[nResponse_z];")
+        gqBlock.append("  int totalYes;")
+        gqBlock.append("  int totalN;")
+        gqBlock.append("  real totalPct;")
+        gqBlock.append("  totalYes=0;")
+        gqBlock.append("  totalN=0;")
+        gqBlock.append("  etaTemp_z[1]=0;")
+        gqBlock.append("  for(i in 1:nCellPopulation){")
+        for i in self.poll.outcome[1:]:
+            etaStr = "    etaTemp_z["+str(i)+"] = "
+            for j,eff in enumerate(allEff):
+                name = effects[eff].label+"_z_"+str(i)
+                etaStr += "a_"+name+"[indexes_Pop[i,"+str(j+1)+"]]"
+                if j + 1 < len(allEff):
+                    etaStr += " + "
+            gqBlock.append(etaStr+";")
+        gqBlock.append("    probs = softmax(etaTemp_z);")
+        gqBlock.append("    countsTemp = multinomial_rng(probs,N_Pop[i]);")
+        gqBlock.append("    totalN += N_Pop[i];")
+        for i in self.poll.outcome:
+            etaStr = "    etaTemp["+str(i)+"] = "
+            for j,eff in enumerate(allEff2):
+                name = effects[eff].label
+                if iName in name:
+                    etaStr += "a_"+name+"["+str(i)+"]"
+                else:
+                    etaStr += "a_"+name+"[indexes_Pop[i,"+str(j+1)+"]]"
+                if j + 1 < len(allEff2):
+                    etaStr += " + "
+            gqBlock.append(etaStr+";")
+        gqBlock.append("    for(j in 1:nResponse_z){")
+        gqBlock.append("      totalYes += binomial_rng(countsTemp[j],inv_logit(etaTemp[j]));")
+        gqBlock.append("    }")
+        gqBlock.append("  }")
+        gqBlock.append("  totalPct = 100.*totalYes/totalN;")
+
+        gqBlock.append("}")
+        with open("MRP.stan","w") as f:
+            for line in dataBlock:
+                f.write(line+"\n")
+            for line in paramBlock:
+                f.write(line+"\n")
+            for line in tParamBlock:
+                f.write(line+"\n")
+            for line in modelBlock:
+                f.write(line+"\n")
+            for line in gqBlock:
+                f.write(line+"\n")
+        self.data = data
+            
+        return
+        
+    def setPrior(self,effectName,df,linTerms=None,catTerms=None):
+        if linTerms is not None:
+            self.effects[effectName].priorLin = linearEffect(linTerms,df)
+            for eff in self.subEffects:
+                eff[effectName].priorLin = linearEffect(linTerms,df)
+        if catTerms is not None:
+            self.effects[effectName].priorCat = [categoricalEffect(c,df[c],len(np.unique(df[c])),1) for c in catTerms]
+            for eff in self.subEffects:
+                eff[effectName].priorCat = [categoricalEffect(c,df[c],len(np.unique(df[c])),1) for c in catTerms]
+        return
+        
 
 class mrpNestedModel:
     def __init__(self,poll,subPolls,intOrder):
