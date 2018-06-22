@@ -56,8 +56,7 @@ class MRPpoll:
         #Condense survey responses by category
         if self.isDichotomous:
             uniq_survey_df = (self.df.groupby(mainEffectsLabels).Success.agg(['sum','size']).reset_index())
-            uniq_survey_df["n"]           = uniq_survey_df['size']
-            uniq_survey_df["Success"]     = uniq_survey_df['sum']
+            uniq_survey_df = uniq_survey_df.rename(columns={"size":"n","sum":"Success"})
         else:
             grouped = self.df.groupby(mainEffectsLabels)
             uniq_survey_df = grouped[question].value_counts().unstack(level=len(mainEffectsLabels)).reset_index().fillna(0.)
@@ -130,7 +129,7 @@ print(stateLabels)
 stateDict = {abbr:[abbr] for abbr in stateLabels}
 
 
-def getMRPpoll(survey,question,dichot,drop,condense=True):
+def getMRPpoll(survey,question,dichot,drop,condense=True,additionalPredictors = None):
     validSurveys = ["VSG16"]
     if survey not in validSurveys:
         print(survey," is not a valid survey, try again")
@@ -194,8 +193,13 @@ def getMRPpoll(survey,question,dichot,drop,condense=True):
     poll = MRPpoll(survey,df,predictors,weightCol)
     poll.encodePredictors()
     poll.encodeOutcomes(question,dichot,drop)
+    if additionalPredictors is not None:
+        poll.mainEffectsLabels += additionalPredictors
+        for eff in additionalPredictors:
+            poll.df = poll.df[~poll.df[eff].isnull()]
+            poll.df[eff] = poll.df[eff].astype(np.int64)
     if condense:
-        poll.condense(question,True)
+        poll.condense(question,False)
 
 
     return poll
