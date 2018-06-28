@@ -1,0 +1,161 @@
+data {
+  int<lower = 1> nEffects_z;
+  int<lower = 1> nCellPopulation;
+  int indexes_Pop[nCellPopulation,nEffects_z];
+  int N_Pop[nCellPopulation];
+  int<lower = 1> nCellSample_z;
+  int<lower = 2> nResponse_z;
+  int response_z[nCellSample_z,nResponse_z];
+  int indexes_z[nCellSample_z,nEffects_z];
+  int<lower = 1> nCellSample;
+  int N[nCellSample];
+  int response[nCellSample];
+  int<lower = 1> nGenderCat;
+  int<lower = 1> nEduCat;
+  int<lower = 1> nMarCat;
+  int<lower = 1> nRaceCat;
+  int<lower = 1> nIncCat;
+  int<lower = 1> nAgeCat;
+  int<lower = 1> nUSRCat;
+  int<lower = 1> nideo5_2016;
+  int<lower = 1> nEffects;
+  int indexes[nCellSample,nEffects];
+}
+parameters{
+  vector[nResponse_z-1] intercept_int;
+  matrix[nGenderCat,nResponse_z-1]delta_GenderCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_GenderCat_int;
+  matrix[nEduCat,nResponse_z-1]delta_EduCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_EduCat_int;
+  matrix[nMarCat,nResponse_z-1]delta_MarCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_MarCat_int;
+  matrix[nRaceCat,nResponse_z-1]delta_RaceCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_RaceCat_int;
+  matrix[nIncCat,nResponse_z-1]delta_IncCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_IncCat_int;
+  matrix[nAgeCat,nResponse_z-1]delta_AgeCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_AgeCat_int;
+  matrix[nUSRCat,nResponse_z-1]delta_USRCat_int;
+  vector<lower=0>[nResponse_z-1] stdv_USRCat_int;
+  real intercept;
+  vector[nGenderCat]delta_GenderCat;
+  real <lower=0> stdv_GenderCat;
+  vector[nEduCat]delta_EduCat;
+  real <lower=0> stdv_EduCat;
+  vector[nMarCat]delta_MarCat;
+  real <lower=0> stdv_MarCat;
+  vector[nRaceCat]delta_RaceCat;
+  real <lower=0> stdv_RaceCat;
+  vector[nIncCat]delta_IncCat;
+  real <lower=0> stdv_IncCat;
+  vector[nAgeCat]delta_AgeCat;
+  real <lower=0> stdv_AgeCat;
+  vector[nUSRCat]delta_USRCat;
+  real <lower=0> stdv_USRCat;
+  vector[nideo5_2016]delta_ideo5_2016;
+  real <lower=0> stdv_ideo5_2016;
+}
+transformed parameters{
+  matrix[nGenderCat,nResponse_z-1]a_GenderCat_int;
+  matrix[nEduCat,nResponse_z-1]a_EduCat_int;
+  matrix[nMarCat,nResponse_z-1]a_MarCat_int;
+  matrix[nRaceCat,nResponse_z-1]a_RaceCat_int;
+  matrix[nIncCat,nResponse_z-1]a_IncCat_int;
+  matrix[nAgeCat,nResponse_z-1]a_AgeCat_int;
+  matrix[nUSRCat,nResponse_z-1]a_USRCat_int;
+  vector[nCellSample]eta;
+  vector[nGenderCat]a_GenderCat;
+  vector[nEduCat]a_EduCat;
+  vector[nMarCat]a_MarCat;
+  vector[nRaceCat]a_RaceCat;
+  vector[nIncCat]a_IncCat;
+  vector[nAgeCat]a_AgeCat;
+  vector[nUSRCat]a_USRCat;
+  vector[nideo5_2016]a_ideo5_2016;
+  matrix[nCellSample_z,nResponse_z] eta_z;
+  vector[nCellSample_z] zeros;
+  zeros = rep_vector(0,nCellSample_z);
+  eta_z[:,nResponse_z] = zeros;
+  for (k in 1:(nResponse_z-1)){
+    a_GenderCat_int[,k]= stdv_GenderCat_int[k] * delta_GenderCat_int[,k];
+    a_EduCat_int[,k]= stdv_EduCat_int[k] * delta_EduCat_int[,k];
+    a_MarCat_int[,k]= stdv_MarCat_int[k] * delta_MarCat_int[,k];
+    a_RaceCat_int[,k]= stdv_RaceCat_int[k] * delta_RaceCat_int[,k];
+    a_IncCat_int[,k]= stdv_IncCat_int[k] * delta_IncCat_int[,k];
+    a_AgeCat_int[,k]= stdv_AgeCat_int[k] * delta_AgeCat_int[,k];
+    a_USRCat_int[,k]= stdv_USRCat_int[k] * delta_USRCat_int[,k];
+    eta_z[:,k] = a_GenderCat_int[indexes_z[:,1],k] + a_EduCat_int[indexes_z[:,2],k] + a_MarCat_int[indexes_z[:,3],k] + a_RaceCat_int[indexes_z[:,4],k] + a_IncCat_int[indexes_z[:,5],k] + a_AgeCat_int[indexes_z[:,6],k] + a_USRCat_int[indexes_z[:,7],k];
+  }
+  a_GenderCat= stdv_GenderCat * delta_GenderCat;
+  a_EduCat= stdv_EduCat * delta_EduCat;
+  a_MarCat= stdv_MarCat * delta_MarCat;
+  a_RaceCat= stdv_RaceCat * delta_RaceCat;
+  a_IncCat= stdv_IncCat * delta_IncCat;
+  a_AgeCat= stdv_AgeCat * delta_AgeCat;
+  a_USRCat= stdv_USRCat * delta_USRCat;
+  a_ideo5_2016= stdv_ideo5_2016 * delta_ideo5_2016;
+  eta = a_GenderCat[indexes[:,1]] + a_EduCat[indexes[:,2]] + a_MarCat[indexes[:,3]] + a_RaceCat[indexes[:,4]] + a_IncCat[indexes[:,5]] + a_AgeCat[indexes[:,6]] + a_USRCat[indexes[:,7]] + a_ideo5_2016[indexes[:,8]];
+}
+model {
+  intercept_int ~ normal(0,1);
+  for(k in 1:nResponse_z-1){
+    delta_GenderCat_int[,k] ~ normal(0,1);
+    delta_EduCat_int[,k] ~ normal(0,1);
+    delta_MarCat_int[,k] ~ normal(0,1);
+    delta_RaceCat_int[,k] ~ normal(0,1);
+    delta_IncCat_int[,k] ~ normal(0,1);
+    delta_AgeCat_int[,k] ~ normal(0,1);
+    delta_USRCat_int[,k] ~ normal(0,1);
+  }
+  stdv_GenderCat_int ~ normal(0,1);
+  stdv_EduCat_int ~ normal(0,1);
+  stdv_MarCat_int ~ normal(0,1);
+  stdv_RaceCat_int ~ normal(0,1);
+  stdv_IncCat_int ~ normal(0,1);
+  stdv_AgeCat_int ~ normal(0,1);
+  stdv_USRCat_int ~ normal(0,1);
+  intercept ~ normal(0,1);
+  delta_GenderCat ~ normal(0,1);
+  stdv_GenderCat ~ normal(0,1);
+  delta_EduCat ~ normal(0,1);
+  stdv_EduCat ~ normal(0,1);
+  delta_MarCat ~ normal(0,1);
+  stdv_MarCat ~ normal(0,1);
+  delta_RaceCat ~ normal(0,1);
+  stdv_RaceCat ~ normal(0,1);
+  delta_IncCat ~ normal(0,1);
+  stdv_IncCat ~ normal(0,1);
+  delta_AgeCat ~ normal(0,1);
+  stdv_AgeCat ~ normal(0,1);
+  delta_USRCat ~ normal(0,1);
+  stdv_USRCat ~ normal(0,1);
+  for(n in 1:nCellSample_z)
+    response_z[n,:]   ~ multinomial(softmax(to_vector(eta_z[n,:])));
+  for(n in 1:nCellSample)
+    response[n]   ~ binomial(N[n],inv_logit(eta[n]));
+}
+generated quantities {
+  simplex[nResponse_z] probs;
+  vector[nResponse_z] etaTemp_z;
+  vector[nResponse_z] etaTemp;
+  int countsTemp[nResponse_z];
+  int totalYes;
+  int totalN;
+  real totalPct;
+  totalYes=0;
+  totalN=0;
+  etaTemp_z[nResponse_z]=0;
+  for(i in 1:nCellPopulation){
+    for(k in 1:nResponse_z-1){
+      etaTemp_z[k] = a_GenderCat_int[indexes_Pop[i,1],k] + a_EduCat_int[indexes_Pop[i,2],k] + a_MarCat_int[indexes_Pop[i,3],k] + a_RaceCat_int[indexes_Pop[i,4],k] + a_IncCat_int[indexes_Pop[i,5],k] + a_AgeCat_int[indexes_Pop[i,6],k] + a_USRCat_int[indexes_Pop[i,7],k];
+    }
+    probs = softmax(etaTemp_z);
+    countsTemp = multinomial_rng(probs,N_Pop[i]);
+    totalN += N_Pop[i];
+    for(j in 1:nResponse_z){
+        etaTemp[j] = a_GenderCat[indexes_Pop[i,1]] + a_EduCat[indexes_Pop[i,2]] + a_MarCat[indexes_Pop[i,3]] + a_RaceCat[indexes_Pop[i,4]] + a_IncCat[indexes_Pop[i,5]] + a_AgeCat[indexes_Pop[i,6]] + a_USRCat[indexes_Pop[i,7]] + a_ideo5_2016[j];
+      totalYes += binomial_rng(countsTemp[j],inv_logit(etaTemp[j]));
+    }
+  }
+  totalPct = 100.*totalYes/totalN;
+}
